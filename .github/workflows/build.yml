@@ -13,6 +13,10 @@ on:
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/hermes-agent
   TAG: isolated
+  # rubik-platform orchestrator pulls this exact ref (provisionDedicatedHost /
+  # provisionSharedHost / bootstrap / orchestrator-handler). Same image content
+  # as hermes-agent:isolated — just the name/tag the platform expects.
+  IMAGE_RUNTIME: ghcr.io/${{ github.repository_owner }}/hermes-runtime
 
 jobs:
   build:
@@ -60,6 +64,7 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:${{ env.TAG }}
             ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE_RUNTIME }}:stable
           provenance: false
           sbom: false
           cache-from: type=gha
@@ -69,3 +74,4 @@ jobs:
         run: |
           echo "Pushed ${{ env.IMAGE }}:${{ env.TAG }}"
           echo "Pushed ${{ env.IMAGE }}:latest"
+          echo "Pushed ${{ env.IMAGE_RUNTIME }}:stable"
