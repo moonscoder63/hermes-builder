@@ -32,4 +32,8 @@ RUN set -eu; \
 # Стартуем как hermes (uid 10000) → s6-setuidgid не вызывается (guard'ы non-root).
 USER 10000
 
-# ENTRYPOINT наследуется от базы: /init /opt/hermes/docker/main-wrapper.sh
+# ENTRYPOINT наследуется от базы: /init /opt/hermes/docker/main-wrapper.sh.
+# Дефолтный CMD — долгоживущий messaging-gateway в foreground (Telegram и др.),
+# а НЕ интерактивный TUI (`hermes` без args без TTY печатает "Goodbye" и выходит
+# → контейнер останавливается). main-wrapper видит args → exec `hermes gateway run`.
+CMD ["gateway", "run"]
