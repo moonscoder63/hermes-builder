@@ -1,0 +1,6 @@
+#!/command/with-contenv sh
+# rubik per-tenant: применить HERMES_SKILLS_DISABLED → config.yaml skills.disabled.
+# Запускается s6 cont-init на каждый старт (после 01-hermes-setup, который создаёт
+# config.yaml). Non-fatal: ошибка не валит init контейнера.
+/opt/hermes/.venv/bin/python3 /opt/hermes/docker/rubik-skills-apply.py || \
+  echo "[rubik-skills] cont-init failed (non-fatal)"

@@ -34,6 +34,12 @@ RUN set -eu; \
 COPY bin/hermes-chat-json /usr/local/bin/hermes-chat-json
 RUN chmod 0755 /usr/local/bin/hermes-chat-json
 
+# Skills bridge: cont-init транслирует HERMES_SKILLS_DISABLED (env от handler apply-skills,
+# формат <category>/<name>) → config.yaml skills.disabled (машинерия агента). См. bin/rubik-skills-apply.py.
+COPY bin/rubik-skills-apply.py /opt/hermes/docker/rubik-skills-apply.py
+COPY cont-init.d/03-rubik-skills /etc/cont-init.d/03-rubik-skills
+RUN chmod 0755 /opt/hermes/docker/rubik-skills-apply.py /etc/cont-init.d/03-rubik-skills
+
 # Стартуем как hermes (uid 10000) → s6-setuidgid не вызывается (guard'ы non-root).
 USER 10000
 
