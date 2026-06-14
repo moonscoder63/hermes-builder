@@ -1,0 +1,64 @@
+#!/usr/bin/env python3
+"""rubik per-tenant web-chat bridge: один запрос к агенту → чистый JSON.
+
+Зовётся handler'ом через `docker exec hermes-<tid> hermes-chat-json <msg> [<session>]`
+(см. orchestrator-handler.sh action `chat`). Шеллит `hermes chat -q -Q` (quiet,
+non-interactive), парсит вывод (`session_id: <id>` + текст ответа) и печатает
+single-line JSON, который ждёт lib/orchestrator/chat.ts:sendChatMessage:
+    {"ok":true,"session_id":"...","response":"..."}
+    {"ok":false,"error":"..."}
+
+msg передаётся как argv (не через shell) — без инъекции. Использует BYOK
+OPENAI_API_KEY из env контейнера (apply-openai-key).
+"""
+import json
+import subprocess
+import sys
+
+SESSION_PREFIX = "session_id: "
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        print(json.dumps({"ok": False, "error": "usage: hermes-chat-json <msg> [<session>]"}))
+        return 0
+    msg = sys.argv[1]
+    session = sys.argv[2] if len(sys.argv) > 2 else "-"
+
+    # --query=<msg> (= форма) — argparse берёт значение однозначно, даже если msg
+    # начинается с '-' (defense-in-depth от argument-injection; handler-reviewer).
+    cmd = ["hermes", "chat", f"--query={msg}", "-Q", "--yolo", "--source", "web", "--pass-session-id"]
+    if session and session != "-":
+        cmd += [f"--resume={session}"]
+
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
+    except subprocess.TimeoutExpired:
+        print(json.dumps({"ok": False, "error": "agent timeout (90s)"}))
+        return 0
+    except Exception as e:  # noqa: BLE001
+        print(json.dumps({"ok": False, "error": f"spawn failed: {e}"}))
+        return 0
+
+    # session_id печатается в stderr (рядом со спиннер-инфо), response — в stdout.
+    # Ищем session_id в обоих потоках (robust); response = stdout без session-строк.
+    sid = ""
+    for line in ((p.stdout or "") + "\n" + (p.stderr or "")).splitlines():
+        if line.startswith(SESSION_PREFIX):
+            sid = line[len(SESSION_PREFIX):].strip()
+    resp_lines = [
+        ln for ln in (p.stdout or "").splitlines() if not ln.startswith(SESSION_PREFIX)
+    ]
+    response = "\n".join(resp_lines).strip()
+
+    if p.returncode != 0 or not sid:
+        err = (p.stderr or response or f"agent exit {p.returncode}").strip()[-800:]
+        print(json.dumps({"ok": False, "error": err, "session_id": sid or None}))
+        return 0
+
+    print(json.dumps({"ok": True, "session_id": sid, "response": response}))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

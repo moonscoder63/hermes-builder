@@ -29,6 +29,11 @@ RUN set -eu; \
       sed -i 's#export HOME=/opt/data#export HOME="${HERMES_HOME:-/opt/data}"#g; s#^cd /opt/data#cd "${HERMES_HOME:-/opt/data}"#g' "$f"; \
     done
 
+# Web-chat bridge: handler action `chat` зовёт `docker exec … hermes-chat-json`
+# (один запрос к агенту → чистый JSON {ok,session_id,response}). См. bin/hermes-chat-json.
+COPY bin/hermes-chat-json /usr/local/bin/hermes-chat-json
+RUN chmod 0755 /usr/local/bin/hermes-chat-json
+
 # Стартуем как hermes (uid 10000) → s6-setuidgid не вызывается (guard'ы non-root).
 USER 10000
 
