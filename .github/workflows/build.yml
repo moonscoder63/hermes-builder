@@ -55,7 +55,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push image
+      - name: Build and push hermes-agent (namecheap single-instance)
         uses: docker/build-push-action@v6
         with:
           context: ./hermes-agent
@@ -64,14 +64,29 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:${{ env.TAG }}
             ${{ env.IMAGE }}:latest
-            ${{ env.IMAGE_RUNTIME }}:stable
           provenance: false
           sbom: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # rubik-platform per-tenant runtime: тонкий adapter FROM hermes-agent:isolated
+      # (USER 10000 + HERMES_HOME=/data + патч /opt/data) под hardened sandbox
+      # оркестратора. См. runtime-adapter/Dockerfile. Заменяет прямой ретег.
+      - name: Build and push hermes-runtime (rubik per-tenant adapter)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./runtime-adapter
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            BASE=${{ env.IMAGE }}:${{ env.TAG }}
+          tags: |
+            ${{ env.IMAGE_RUNTIME }}:stable
+          provenance: false
+          sbom: false
+
       - name: Output image refs
         run: |
           echo "Pushed ${{ env.IMAGE }}:${{ env.TAG }}"
           echo "Pushed ${{ env.IMAGE }}:latest"
-          echo "Pushed ${{ env.IMAGE_RUNTIME }}:stable"
+          echo "Pushed ${{ env.IMAGE_RUNTIME }}:stable (per-tenant adapter)"
