@@ -40,6 +40,13 @@ COPY bin/rubik-skills-apply.py /opt/hermes/docker/rubik-skills-apply.py
 COPY cont-init.d/03-rubik-skills /etc/cont-init.d/03-rubik-skills
 RUN chmod 0755 /opt/hermes/docker/rubik-skills-apply.py /etc/cont-init.d/03-rubik-skills
 
+# LLM bridge: cont-init транслирует LITELLM_URL + HERMES_LLM_MODEL (env от handler
+# apply-openai-key/apply-config) → config.yaml model.base_url/default. Клиент платит
+# с баланса через наш LiteLLM (НЕ BYOK). См. bin/rubik-model-apply.py.
+COPY bin/rubik-model-apply.py /opt/hermes/docker/rubik-model-apply.py
+COPY cont-init.d/04-rubik-model /etc/cont-init.d/04-rubik-model
+RUN chmod 0755 /opt/hermes/docker/rubik-model-apply.py /etc/cont-init.d/04-rubik-model
+
 # Стартуем как hermes (uid 10000) → s6-setuidgid не вызывается (guard'ы non-root).
 USER 10000
 
