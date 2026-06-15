@@ -1,0 +1,6 @@
+#!/command/with-contenv sh
+# rubik per-tenant: транслировать LITELLM_URL + HERMES_LLM_MODEL → config.yaml
+# model.base_url / model.default. Запускается s6 cont-init на каждый старт (после
+# 01-hermes-setup, который создаёт config.yaml). Non-fatal: ошибка не валит init.
+/opt/hermes/.venv/bin/python3 /opt/hermes/docker/rubik-model-apply.py || \
+  echo "[rubik-model] cont-init failed (non-fatal)"
